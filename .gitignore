@@ -14,3 +14,7 @@ venv
 build
 dist
 *.egg-info
+.vagrant/
+Vagrantfile
+bootstrap.sh
+requirements_local.txt
