@@ -84,7 +84,7 @@ def standup(request, response):
     if not status:
         yield from display_all_statuses(app.addon, client)
     elif status.startswith("@") and ' ' not in status:
-        yield from display_one_status(app.addon, client, mention_name=status)
+        yield from display_one_status(app.addon, client, mention_name=status.strip("@"))
     else:
         yield from record_status(app.addon, client, from_user, status)
 
@@ -161,10 +161,11 @@ def find_statuses(addon, client):
         statuses = data.get('users', {})
         result = {}
         for mention_name, status in statuses.items():
-            if status['date'].replace(tzinfo=None) > datetime.utcnow()-timedelta(days=3):
-                result[mention_name] = status
-            else:
-                print("Filtering status from %s of date %s" % (mention_name, status['date']))
+            result[mention_name] = status
+            #if status['date'].replace(tzinfo=None) > datetime.utcnow()-timedelta(days=3):
+            #    result[mention_name] = status
+            #else:
+            #    print("Filtering status from %s of date %s" % (mention_name, status['date']))
 
         statuses = result
 
