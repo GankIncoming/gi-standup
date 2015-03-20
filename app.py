@@ -93,20 +93,28 @@ def standup(request, response):
 
 @asyncio.coroutine
 def record_status(addon, client, from_user, status):
-    user_mention = from_user['mention_name']
+    spec, statuses = yield from find_statuses(addon, client)
 
-    standup_db[user_mention] = {
+    user_mention = from_user['mention_name']
+    statuses[user_mention] = {
         "user": from_user,
         "message": status,
         "date": datetime.utcnow()
     }
+
+    data = dict(spec)
+    data['users'] = statuses
+
+    yield from standup_db(addon).update(spec, data, upsert=True)
 
     yield from client.send_notification(addon, text="Status recorded.  Type '/standup' to see the full report.")
 
 
 @asyncio.coroutine
 def display_one_status(addon, client, mention_name):
-    status = standup_db[mention_name]
+    spec, statuses = yield from find_statuses(addon, client)
+
+    status = statuses.get(mention_name)
     if status:
         yield from client.send_notification(addon, html=render_status(status))
     else:
@@ -116,7 +124,9 @@ def display_one_status(addon, client, mention_name):
 
 @asyncio.coroutine
 def display_all_statuses(addon, client):
-    if standup_db:
+    spec, statuses = yield from find_statuses(addon, client)
+
+    if statuses:
         yield from client.send_notification(addon, html=render_all_statuses(statuses))
     else:
         yield from client.send_notification(addon, text="No status found. "
@@ -168,6 +178,9 @@ def status_spec(client):
         "capabilities_url": client.capabilities_url
     }
 
+    
+def standup_db(addon):
+    return addon.mongo_db.default_database['standup']
 
 if __name__ == "__main__":
     app.run(host="", reloader=True, debug=True)
