@@ -45,7 +45,7 @@ def capabilities(request, response):
         "description": "HipChat connect add-on that supports async standups (Gank Incoming fork)",
         "vendor": {
             "name": "Gank Incoming",
-            "url": ""
+            "url": "http://gankincoming.shoutwiki.com/wiki/Main_Page"
         },
         "capabilities": {
             "installable": {
