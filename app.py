@@ -11,7 +11,7 @@ app = create_addon_app(__name__,
                        plugin_key="gi-standup",
                        addon_name="GI Standup",
                        from_name="Standup",
-                       base_url="http://192.168.33.1:8080")
+                       base_url="gi-standup.herokuapp.com")
 
 app.config['MONGO_URL'] = os.environ.get("MONGO_URL", None)
 app.config['REDIS_URL'] = os.environ.get("REDISTOGO_URL", None)
