@@ -8,7 +8,7 @@ from bottle_ac import create_addon_app
 
 parameter_prefix = "--"
 parameter_argument_separator = "="
-parameter_expiry_date = parameter_prefix + "expiry"
+parameter_expiry_date = [parameter_prefix + "expiry", parameter_prefix + "expiration"]
 
 log = logging.getLogger(__name__)
 app = create_addon_app(__name__,
@@ -72,22 +72,19 @@ def capabilities(request, response):
     }
 
 def extract_status_parameters(status):
-    parameters = []
+    parameters = {}
 
     while len(status) > 0:
         if status.startswith(parameter_prefix):
             parameter, _, status = status.partition(' ')
-            parameters.append(parameter)
+            parameter, _, argument = parameter.partition(parameter_argument_separator)
+            parameters[parameter] = argument
             status = status.strip()
         else:
             break
 
     return status, parameters
 
-
-@asyncio.coroutine
-def handle_parameters(addon, client, parameters):
-    pass
 
 @app.route('/standup', method='POST')
 @asyncio.coroutine
@@ -108,25 +105,27 @@ def standup(request, response):
 
         if len(status) > 0:
             yield from record_status(app.addon, client, from_user, status, parameters)
-        else:
-            yield from handle_parameters(app.addon, client, parameters)
 
     response.status = 204
 
 
 @asyncio.coroutine
 def handle_expiry_date_parameter(parameters):
+    parameter_present = False
     argument = ""
 
-    for parameter in parameters:
-        if parameter.startswith("--expiry"):
-        #if parameter.startswith(parameter_expiry_date):
-            _, _, argument = parameter.partition("=")
+    for alias in parameter_expiry_date:
+        if alias in parameters:
+            parameter_present = True
+            argument = parameters[alias]
             break
 
+    if not parameter_present:
+        return True, None
+
     if len(argument) <= 0:
-        print("Error: no argument")
-        return None
+        print("Error: no expiry argument")
+        return False, None
 
     # Is the argument a date? E.g.: --expiry=10.03
     if '.' in argument:
@@ -134,33 +133,38 @@ def handle_expiry_date_parameter(parameters):
         date = datetime.utcnow().replace(day = int(day), month = int(month))
 
         if date < datetime.utcnow():
-            return date.replace(year = date.year + 1)
-        return date
+            return True, date.replace(year = date.year + 1)
+        return True, date
 
     # Is the argument an interval? E.g.: --expiry=3d
     try:
         num = int(argument[:-1])
     except:
-        print("Error: could not convert argument to integer")
-        return None
+        print("Error: could not convert expiry argument to integer")
+        return False, None
 
     if argument.endswith('s'):
-        return datetime.utcnow() + timedelta(seconds = num)
+        return True, datetime.utcnow() + timedelta(seconds = num)
     elif argument.endswith('m'):
-        return datetime.utcnow() + timedelta(minutes = num)
+        return True, datetime.utcnow() + timedelta(minutes = num)
     elif argument.endswith('h'):
-        return datetime.utcnow() + timedelta(hours = num)
+        return True, datetime.utcnow() + timedelta(hours = num)
     elif argument.endswith('d'):
-        return datetime.utcnow() + timedelta(days = num)
+        return True, datetime.utcnow() + timedelta(days = num)
 
-    print("Error: invalid argument")
-    return None
+    print("Error: invalid expiry argument")
+    return False, None
+
 
 @asyncio.coroutine
 def record_status(addon, client, from_user, status, parameters):
     spec, statuses = yield from find_statuses(addon, client)
     user_mention = from_user['mention_name']
-    expiry_date = handle_expiry_date_parameter(parameters)
+    success, expiry_date = handle_expiry_date_parameter(parameters)
+
+    if not success:
+        yield from client.send_notification(addon, text = "Error: invalid expiry argument. Status NOT recorded.")
+        return
 
     statuses[user_mention] = {
         "user": from_user,
@@ -175,7 +179,6 @@ def record_status(addon, client, from_user, status, parameters):
     yield from standup_db(addon).update(spec, data, upsert=True)
 
     yield from client.send_notification(addon, text="Status recorded.  Type '/standup' to see the full report.")
-
 
 @asyncio.coroutine
 def display_one_status(addon, client, mention_name):
