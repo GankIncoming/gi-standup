@@ -13,7 +13,7 @@ parameter_expiry_date = [parameter_prefix + "expiry", parameter_prefix + "expira
 log = logging.getLogger(__name__)
 app = create_addon_app(__name__,
                        plugin_key="gi-standup-dev",
-                       addon_name="GI Standup",
+                       addon_name="GI Standup Dev",
                        from_name="GI Standup",
                        base_url="https://gi-standup-dev.herokuapp.com")
 
