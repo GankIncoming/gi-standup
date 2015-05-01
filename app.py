@@ -220,12 +220,12 @@ def render_status(status):
     html = html.replace("</p>", "")
     name = status['user']['name']
 
-    to_print = "<b>{name}</b>: {message} -- <i>{ago}, expiry: {expiry}</i>".format(name = name, message = html, ago = msg_date.humanize(),
-                                                                           expiry = expiry_date.humanize())
-
     if status["expiry"] is not None and status["expiry"].replace(tzinfo = None) < datetime.utcnow():
-        return "<s>" + to_print + "</s>"
-    return to_print
+        return "<b>EXPIRED</b>: " + "<i>{name}: {message} -- {ago}, expiry: {expiry}</i>".format(
+            name = name, message = html, ago = msg_date.humanize(), expiry = expiry_date.humanize())
+
+    return "<b>{name}</b>: {message} -- <i>{ago}, expiry: {expiry}</i>".format(name = name, message = html, ago = msg_date.humanize(),
+                                                                               expiry = expiry_date.humanize())
 
 
 @asyncio.coroutine
