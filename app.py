@@ -114,11 +114,12 @@ def handle_expiry_date_parameter(parameters):
     parameter_present = False
     argument = ""
 
-    for alias in parameter_expiry_date:
-        if alias in parameters:
-            parameter_present = True
-            argument = parameters[alias]
-            break
+    if len(parameters) > 0:
+        for alias in parameter_expiry_date:
+            if alias in parameters:
+                parameter_present = True
+                argument = parameters[alias]
+                break
 
     if not parameter_present:
         return True, None
