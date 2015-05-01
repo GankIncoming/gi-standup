@@ -109,7 +109,6 @@ def standup(request, response):
     response.status = 204
 
 
-@asyncio.coroutine
 def handle_expiry_date_parameter(parameters):
     parameter_present = False
     argument = ""
