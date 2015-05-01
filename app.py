@@ -121,7 +121,7 @@ def handle_expiry_date_parameter(parameters):
                 break
 
     if not parameter_present:
-        return True, None
+        return True, datetime.utcnow() + timedelta(days = 1)
 
     if len(argument) <= 0:
         print("Error: no expiry argument")
@@ -223,7 +223,7 @@ def render_status(status):
     to_print = "<b>{name}</b>: {message} -- <i>{ago}, expiry: {expiry}</i>".format(name = name, message = html, ago = msg_date.humanize(),
                                                                            expiry = expiry_date.humanize())
 
-    if status["expiry"] is not None and status["expiry"] < datetime.utcnow():
+    if status["expiry"] is not None and status["expiry"].replace(tzinfo = None) < datetime.utcnow():
         return "<s>" + to_print + "</s>"
     return to_print
 
