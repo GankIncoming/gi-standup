@@ -10,6 +10,11 @@ parameter_prefix = "--"
 parameter_argument_separator = "="
 parameter_expiry_date = [parameter_prefix + "expiry", parameter_prefix + "expiration"]
 
+db_user_key = "user"
+db_status_key = "message"
+db_date_key = "date"
+db_expiry_key = "expiry"
+
 log = logging.getLogger(__name__)
 app = create_addon_app(__name__,
                        plugin_key="gi-standup-dev",
@@ -124,7 +129,7 @@ def handle_expiry_date_parameter(parameters):
         return True, datetime.utcnow() + timedelta(days = 1)
 
     if len(argument) <= 0:
-        print("Error: no expiry argument")
+        print("Error: no argument for expiry parameter")
         return False, None
 
     # Is the argument a date? E.g.: --expiry=10.03
@@ -167,10 +172,10 @@ def record_status(addon, client, from_user, status, parameters):
         return
 
     statuses[user_mention] = {
-        "user": from_user,
-        "message": status,
-        "date": datetime.utcnow(),
-        "expiry": expiry_date
+        db_user_key: from_user,
+        db_status_key: status,
+        db_date_key: datetime.utcnow(),
+        db_expiry_key: expiry_date
     }
 
     data = dict(spec)
@@ -211,17 +216,17 @@ def render_all_statuses(statuses):
 
 
 def render_status(status):
-    msg_date = arrow.get(status['date'])
-    expiry_date = arrow.get(status["expiry"])
+    msg_date = arrow.get(status[db_date_key])
+    expiry_date = arrow.get(status[db_expiry_key])
 
-    message = status['message']
+    message = status[db_status_key]
     html = markdown.markdown(message)
     html = html.replace("<p>", "")
     html = html.replace("</p>", "")
-    name = status['user']['name']
+    name = status[db_user_key]['name']
 
-    if status["expiry"] is not None and status["expiry"].replace(tzinfo = None) < datetime.utcnow():
-        return "<b>EXPIRED</b>: " + "<i>{name}: {message} -- {ago}, expiry: {expiry}</i>".format(
+    if status[db_expiry_key] is not None and status[db_expiry_key].replace(tzinfo = None) < datetime.utcnow():
+        return "<b>EXPIRED</b>: " + "<i>{name}: {message} -- {ago} (expiry: {expiry})</i>".format(
             name = name, message = html, ago = msg_date.humanize(), expiry = expiry_date.humanize())
 
     return "<b>{name}</b>: {message} -- <i>{ago}, expiry: {expiry}</i>".format(name = name, message = html, ago = msg_date.humanize(),
