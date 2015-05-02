@@ -250,7 +250,7 @@ def render_status(status):
     html = html.replace("</p>", "")
     name = status[db_user_key]['name']
 
-    if is_status_expired(status)
+    if is_status_expired(status):
         return "<b>EXPIRED</b>: " + "<i>{name}: {message} -- {ago} (expiry: {expiry})</i>".format(
             name = name, message = html, ago = msg_date.humanize(), expiry = expiry_date.humanize())
 
