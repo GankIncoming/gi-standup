@@ -112,7 +112,7 @@ def handle_standalone_parameters(addon, client, parameters):
 
             options[options_show_expired_key] = value
 
-            yield from save_to_db(addon, client, None, options)
+            yield from save_to_db(addon, client, statuses = None, options = options)
 
             if value:
                 yield from client.send_notification(addon, text = "Expired statuses WILL be shown from now on.")
@@ -204,14 +204,14 @@ def record_status(addon, client, from_user, status, parameters):
         db_expiry_key: expiry_date
     }
 
-    yield from save_to_db(addon, client, statuses, None)
+    yield from save_to_db(addon, client, statuses = statuses, options = None)
 
     yield from client.send_notification(addon, text="Status recorded.  Type '/standup' to see the full report.")
 
 
 @asyncio.coroutine
 def save_to_db(addon, client, statuses, options, delete = False):
-    if statuses is not None or options is not None:
+    if statuses is None and options is None:
         return
 
     if statuses is None and not delete:
