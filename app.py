@@ -133,7 +133,7 @@ def standup(request, response):
     status, parameters = extract_status_parameters(status)
 
     if not status:
-        proceed = yield from handle_standalone_parameters(parameters)
+        proceed = yield from handle_standalone_parameters(app.addon, client, parameters)
 
         if proceed:
             yield from display_all_statuses(app.addon, client, parameters)
