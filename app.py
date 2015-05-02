@@ -7,32 +7,19 @@ import markdown
 from bottle_ac import create_addon_app
 
 
-class Options(object):
-    show_expired_key = "show expired"
-
-    def __init__(self):
-        self.__options = {
-            self.show_expired_key: True
-        }
-
-    def get(self, key):
-        return self.__options[key]
-
-    def set(self, key, value):
-        self.__options[key] = value
+options_show_expired_key = "show expired"
 
 parameter_prefix = "--"
 parameter_argument_separator = "="
 parameter_expiry_date = [parameter_prefix + "expiry", parameter_prefix + "expiration"]
-parameter_show_expired = parameter_prefix + "show-expired"
+parameter_show_expired_persistent = parameter_prefix + "show-expired"
 parameter_show_all_once = parameter_prefix + "all"
+parameter_no_show_expired_once = parameter_prefix + "no-expired"
 
 db_user_key = "user"
 db_status_key = "message"
 db_date_key = "date"
 db_expiry_key = "expiry"
-
-options = Options()
 
 log = logging.getLogger(__name__)
 app = create_addon_app(__name__,
@@ -115,17 +102,26 @@ def handle_standalone_parameters(addon, client, parameters):
     if len(parameters) <= 0:
         return True
 
-    if parameter_show_expired in parameters and len(parameters[parameter_show_expired]) > 0:
+    if parameter_show_expired_persistent in parameters:
         try:
-            value = string_to_bool(parameters[parameter_show_expired])
-            options.set(options.show_expired_key, value)
+            value = string_to_bool(parameters[parameter_show_expired_persistent])
+
+            spec = status_spec(client)
+            options = yield from options_db(addon, client)
+            options[options_show_expired_key] = value
+
+            data = dict(spec)
+            data["options"] = options
+
+            yield from standup_db(addon).update(spec, data, upsert = True)
 
             if value:
                 yield from client.send_notification(addon, text = "Expired statuses WILL be shown from now on.")
             else:
                 yield from client.send_notification(addon, text = "Expired statuses will NOT be shown from now on.")
         except:
-            yield from client.send_notification(addon, text = "Error: invalid argument for %s." % parameter_show_expired)
+            yield from client.send_notification(addon, text = "Error: invalid argument for %s." % parameter_show_expired_persistent)
+
         return False
 
     return True
@@ -230,11 +226,12 @@ def display_one_status(addon, client, mention_name):
 
 @asyncio.coroutine
 def display_all_statuses(addon, client, parameters):
-    show_expired = options.get(options.show_expired_key)
+    options = yield from options_db(addon, client)
+    show_expired = options[options_show_expired_key]
 
     if parameter_show_all_once in parameters:
         show_expired = True
-    elif parameter_show_expired in parameters and len(parameters[parameter_show_expired]) > 0:
+    elif parameter_no_show_expired_once in parameters:
         show_expired = False
 
     spec, statuses = yield from find_statuses(addon, client, show_expired = show_expired)
@@ -307,6 +304,10 @@ def status_spec(client):
 def standup_db(addon):
     return addon.mongo_db.default_database['standup']
 
+@asyncio.coroutine
+def options_db(addon, client):
+    options = yield from standup_db(addon).find_one(status_spec(client)).get("options", {})
+    return options
 
 def string_to_timedelta(s):
     try:
@@ -341,4 +342,3 @@ def string_to_bool(s):
 
 if __name__ == "__main__":
     app.run(host="", reloader=True, debug=True)
-
