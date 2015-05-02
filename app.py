@@ -232,7 +232,7 @@ def display_all_statuses(addon, client, parameters):
     options = yield from options_db(addon, client)
     show_expired = True
 
-    if options is not None:
+    if options is not None and options_show_expired_key in options:
         show_expired = options[options_show_expired_key]
 
     if parameter_show_all_once in parameters:
