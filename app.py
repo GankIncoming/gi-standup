@@ -105,9 +105,12 @@ def handle_standalone_parameters(addon, client, parameters):
     if parameter_show_expired_persistent in parameters:
         try:
             value = string_to_bool(parameters[parameter_show_expired_persistent])
-
             spec = status_spec(client)
             options = yield from options_db(addon, client)
+
+            if not options:
+                options = {}
+
             options[options_show_expired_key] = value
 
             data = dict(spec)
@@ -227,7 +230,10 @@ def display_one_status(addon, client, mention_name):
 @asyncio.coroutine
 def display_all_statuses(addon, client, parameters):
     options = yield from options_db(addon, client)
-    show_expired = options[options_show_expired_key]
+    show_expired = True
+
+    if options is not None:
+        show_expired = options[options_show_expired_key]
 
     if parameter_show_all_once in parameters:
         show_expired = True
@@ -306,8 +312,11 @@ def standup_db(addon):
 
 @asyncio.coroutine
 def options_db(addon, client):
-    options = yield from standup_db(addon).find_one(status_spec(client)).get("options", {})
-    return options
+    spec = status_spec(client)
+    data = yield from standup_db(addon).find_one(spec)
+    if data:
+        return data.get("options", {})
+    return None
 
 def string_to_timedelta(s):
     try:
