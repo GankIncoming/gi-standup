@@ -105,7 +105,6 @@ def handle_standalone_parameters(addon, client, parameters):
     if parameter_show_expired_persistent in parameters:
         try:
             value = string_to_bool(parameters[parameter_show_expired_persistent])
-            spec = status_spec(client)
             options = yield from options_db(addon, client)
 
             if not options:
@@ -113,10 +112,7 @@ def handle_standalone_parameters(addon, client, parameters):
 
             options[options_show_expired_key] = value
 
-            data = dict(spec)
-            data["options"] = options
-
-            yield from standup_db(addon).update(spec, data, upsert = True)
+            yield from save_to_db(addon, client, None, options)
 
             if value:
                 yield from client.send_notification(addon, text = "Expired statuses WILL be shown from now on.")
@@ -208,12 +204,28 @@ def record_status(addon, client, from_user, status, parameters):
         db_expiry_key: expiry_date
     }
 
-    data = dict(spec)
-    data['users'] = statuses
-
-    yield from standup_db(addon).update(spec, data, upsert=True)
+    yield from save_to_db(addon, client, statuses, None)
 
     yield from client.send_notification(addon, text="Status recorded.  Type '/standup' to see the full report.")
+
+
+@asyncio.coroutine
+def save_to_db(addon, client, statuses, options, delete = False):
+    if statuses is not None or options is not None:
+        return
+
+    if statuses is None and not delete:
+        statuses = yield from find_statuses(addon, client, show_expired = True)
+
+    if options is None and not delete:
+        options = yield from options_db(addon, client)
+
+    spec = status_spec(client)
+    data = dict(spec)
+    data["users"] = statuses
+    data["options"] = options
+
+    yield from standup_db(addon).update(spec, data, upsert = True)
 
 @asyncio.coroutine
 def display_one_status(addon, client, mention_name):
@@ -270,7 +282,7 @@ def render_status(status):
         return "<b>EXPIRED</b>: " + "<i>{name}: {message} -- {ago} (expiry: {expiry})</i>".format(
             name = name, message = html, ago = msg_date.humanize(), expiry = expiry_date.humanize())
 
-    return "<b>{name}</b>: {message} -- <i>{ago}, expiry: {expiry}</i>".format(name = name, message = html, ago = msg_date.humanize(),
+    return "<b>{name}</b>: {message} -- <i>{ago} (expiry: {expiry})</i>".format(name = name, message = html, ago = msg_date.humanize(),
                                                                                expiry = expiry_date.humanize())
 
 
