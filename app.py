@@ -9,11 +9,19 @@ from bottle_ac import create_addon_app
 parameter_prefix = "--"
 parameter_argument_separator = "="
 parameter_expiry_date = [parameter_prefix + "expiry", parameter_prefix + "expiration"]
+parameter_show_expired_persistent = parameter_prefix + "show-expired"
+parameter_show_all_once = parameter_prefix + "all"
 
 db_user_key = "user"
 db_status_key = "message"
 db_date_key = "date"
 db_expiry_key = "expiry"
+
+option_show_expired_key = "show expired"
+
+options = {
+    option_show_expired_key: True
+}
 
 log = logging.getLogger(__name__)
 app = create_addon_app(__name__,
@@ -83,12 +91,33 @@ def extract_status_parameters(status):
         if status.startswith(parameter_prefix):
             parameter, _, status = status.partition(' ')
             parameter, _, argument = parameter.partition(parameter_argument_separator)
-            parameters[parameter] = argument
+            parameters[parameter.lower()] = argument.lower()
             status = status.strip()
         else:
             break
 
     return status, parameters
+
+
+@asyncio.coroutine
+def handle_standalone_parameters(addon, client, parameters):
+    if len(parameters) <= 0:
+        return True
+
+    if parameter_show_expired_persistent in parameters:
+        try:
+            value = string_to_bool(parameters[parameter_show_expired_persistent])
+            options[option_show_expired_key] = value
+
+            if value:
+                yield from client.send_notification(addon, text = "Expired statuses WILL be shown from now on.")
+            else:
+                yield from client.send_notification(addon, text = "Expired statuses will NOT be shown from now on.")
+        except:
+            yield from client.send_notification(addon, text = "Error: invalid argument for %s." % parameter_show_expired_persistent)
+        return False
+
+    return True
 
 
 @app.route('/standup', method='POST')
@@ -101,15 +130,17 @@ def standup(request, response):
     status = str(body['item']["message"]["message"][len("/standup"):]).strip()
     from_user = body['item']['message']['from']
 
+    status, parameters = extract_status_parameters(status)
+
     if not status:
-        yield from display_all_statuses(app.addon, client)
+        proceed = yield from handle_standalone_parameters(parameters)
+
+        if proceed:
+            yield from display_all_statuses(app.addon, client, parameters)
     elif status.startswith("@") and ' ' not in status:
         yield from display_one_status(app.addon, client, mention_name=status.strip("@"))
     else:
-        status, parameters = extract_status_parameters(status)
-
-        if len(status) > 0:
-            yield from record_status(app.addon, client, from_user, status, parameters)
+        yield from record_status(app.addon, client, from_user, status, parameters)
 
     response.status = 204
 
@@ -142,24 +173,13 @@ def handle_expiry_date_parameter(parameters):
         return True, date
 
     # Is the argument an interval? E.g.: --expiry=3d
-    try:
-        num = int(argument[:-1])
-    except:
-        print("Error: could not convert expiry argument to integer")
-        return False, None
+    interval = string_to_timedelta(argument)
 
-    if argument.endswith('s'):
-        return True, datetime.utcnow() + timedelta(seconds = num)
-    elif argument.endswith('m'):
-        return True, datetime.utcnow() + timedelta(minutes = num)
-    elif argument.endswith('h'):
-        return True, datetime.utcnow() + timedelta(hours = num)
-    elif argument.endswith('d'):
-        return True, datetime.utcnow() + timedelta(days = num)
+    if interval:
+        return True, datetime.utcnow() + interval
 
     print("Error: invalid expiry argument")
     return False, None
-
 
 @asyncio.coroutine
 def record_status(addon, client, from_user, status, parameters):
@@ -198,8 +218,13 @@ def display_one_status(addon, client, mention_name):
 
 
 @asyncio.coroutine
-def display_all_statuses(addon, client):
-    spec, statuses = yield from find_statuses(addon, client)
+def display_all_statuses(addon, client, parameters):
+    show_expired = options[option_show_expired_key]
+
+    if parameter_show_all_once in parameters:
+        show_expired = True
+
+    spec, statuses = yield from find_statuses(addon, client, show_expired = show_expired)
 
     if statuses:
         yield from client.send_notification(addon, html=render_all_statuses(statuses))
@@ -225,7 +250,7 @@ def render_status(status):
     html = html.replace("</p>", "")
     name = status[db_user_key]['name']
 
-    if status[db_expiry_key] is not None and status[db_expiry_key].replace(tzinfo = None) < datetime.utcnow():
+    if is_status_expired(status)
         return "<b>EXPIRED</b>: " + "<i>{name}: {message} -- {ago} (expiry: {expiry})</i>".format(
             name = name, message = html, ago = msg_date.humanize(), expiry = expiry_date.humanize())
 
@@ -234,7 +259,7 @@ def render_status(status):
 
 
 @asyncio.coroutine
-def find_statuses(addon, client):
+def find_statuses(addon, client, show_expired):
     spec = status_spec(client)
     data = yield from standup_db(addon).find_one(spec)
     if not data:
@@ -243,16 +268,20 @@ def find_statuses(addon, client):
         statuses = data.get('users', {})
         result = {}
         for mention_name, status in statuses.items():
-            result[mention_name] = status
-            #if status['date'].replace(tzinfo=None) > datetime.utcnow()-timedelta(days=3):
-            #    result[mention_name] = status
-            #else:
-            #    print("Filtering status from %s of date %s" % (mention_name, status['date']))
+            if show_expired:
+                result[mention_name] = status
+            else:
+                if not is_status_expired(status):
+                    result[mention_name] = status
+                else:
+                    print("Filtering status from %s of date %s" % (mention_name, status['date']))
 
         statuses = result
 
     return spec, statuses
 
+def is_status_expired(status):
+    return status[db_expiry_key] is not None and status[db_expiry_key].replace(tzinfo = None) < datetime.utcnow()
 
 def status_spec(client):
     return {
@@ -265,5 +294,38 @@ def status_spec(client):
 def standup_db(addon):
     return addon.mongo_db.default_database['standup']
 
+
+def string_to_timedelta(s):
+    try:
+        num = int(s[:-1])
+    except:
+        return None
+
+    s = s.lower()
+
+    if s.endswith('s'):
+        return timedelta(seconds = num)
+    elif s.endswith('m'):
+        return timedelta(minutes = num)
+    elif s.endswith('h'):
+        return timedelta(hours = num)
+    elif s.endswith('d'):
+        return timedelta(days = num)
+
+    return None
+
+def string_to_bool(s):
+    s = s.lower()
+
+    if s in ["true", "t", "1"]:
+        return True
+
+    if s in ["false", "f", "0"]:
+        return False
+
+    raise ValueError("Could not convert string to bool!")
+
+
 if __name__ == "__main__":
     app.run(host="", reloader=True, debug=True)
+
