@@ -190,7 +190,7 @@ def handle_expiry_date_parameter(parameters):
 
 @asyncio.coroutine
 def record_status(addon, client, from_user, status, parameters):
-    spec, statuses = yield from find_statuses(addon, client)
+    spec, statuses = yield from find_statuses(addon, client, show_expired = True)
     user_mention = from_user['mention_name']
     success, expiry_date = handle_expiry_date_parameter(parameters)
 
@@ -214,7 +214,7 @@ def record_status(addon, client, from_user, status, parameters):
 
 @asyncio.coroutine
 def display_one_status(addon, client, mention_name):
-    spec, statuses = yield from find_statuses(addon, client)
+    spec, statuses = yield from find_statuses(addon, client, show_expired = True)
 
     status = statuses.get(mention_name)
     if status:
