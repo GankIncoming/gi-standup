@@ -5,21 +5,15 @@ import asyncio
 import arrow
 import markdown
 from bottle_ac import create_addon_app
-
-
-options_show_expired_key = "show expired"
-
-parameter_prefix = "--"
-parameter_argument_separator = "="
-parameter_expiry_date = [parameter_prefix + "expiry", parameter_prefix + "expiration"]
-parameter_show_expired_persistent = parameter_prefix + "show-expired"
-parameter_show_all_once = parameter_prefix + "all"
-parameter_no_show_expired_once = parameter_prefix + "no-expired"
+import parameters
 
 db_user_key = "user"
 db_status_key = "message"
 db_date_key = "date"
 db_expiry_key = "expiry"
+
+param_filename = "parameters.json"
+params = {}
 
 log = logging.getLogger(__name__)
 app = create_addon_app(__name__,
@@ -40,6 +34,7 @@ def init():
                  "you can use Markdown).")
 
     app.addon.register_event('install', _send_welcome)
+    params = parameters.parse_json(param_filename)
 
 app.add_hook('before_first_request', init)
 
@@ -85,10 +80,12 @@ def capabilities(request, response):
 def extract_status_parameters(status):
     parameters = {}
 
+    # TODO check if the passed parameter(s) is (are) valid!
+
     while len(status) > 0:
         if status.startswith(parameter_prefix):
             parameter, _, status = status.partition(' ')
-            parameter, _, argument = parameter.partition(parameter_argument_separator)
+            parameter, _, argument = parameter.partition(argument_separator)
             parameters[parameter.lower()] = argument.lower()
             status = status.strip()
         else:
@@ -101,6 +98,8 @@ def extract_status_parameters(status):
 def handle_standalone_parameters(addon, client, parameters):
     if len(parameters) <= 0:
         return True
+
+    # TODO assign parameter names to specific behavior
 
     if parameter_show_expired_persistent in parameters:
         try:
@@ -155,6 +154,7 @@ def handle_expiry_date_parameter(parameters):
     parameter_present = False
     argument = ""
 
+    # TODO change this check
     if len(parameters) > 0:
         for alias in parameter_expiry_date:
             if alias in parameters:
@@ -352,14 +352,13 @@ def string_to_timedelta(s):
 def string_to_bool(s):
     s = s.lower()
 
-    if s in ["true", "t", "1"]:
+    if s in ["true", "t", "1", "yes"]:
         return True
 
-    if s in ["false", "f", "0"]:
+    if s in ["false", "f", "0", "no"]:
         return False
 
     raise ValueError("Could not convert string to bool!")
-
 
 if __name__ == "__main__":
     app.run(host="", reloader=True, debug=True)
