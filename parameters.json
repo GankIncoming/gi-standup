@@ -33,7 +33,7 @@
       "usable_with_status": false,
       "usable_without_status": true,
       "show_statuses": true,
-      "short_description": "Shows all statuses regardless of settings."
+      "short_description": "Shows all statuses regardless of settings.",
       "long_description": ""
     },
     {
@@ -45,7 +45,7 @@
       "usable_with_status": false,
       "usable_without_status": true,
       "show_statuses": true,
-      "short_description": "Filters out expired statuses regardless of settings."
+      "short_description": "Filters out expired statuses regardless of settings.",
       "long_description": ""
     },
     {
@@ -56,9 +56,8 @@
       "usable_with_status": false,
       "usable_without_status": true,
       "show_statuses": false,
-      "short_description": "Persistent option to determine whether expired statuses are shown in the usual '/standup' usage."
+      "short_description": "Persistent option to determine whether expired statuses are shown in the usual '/standup' usage.",
       "long_description": "Usage: --show-expired=true|false"
-      "
     }
   ]
 }
