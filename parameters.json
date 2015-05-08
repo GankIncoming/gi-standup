@@ -20,7 +20,7 @@
       "usable_without_status": true,
       "show_statuses": false,
       "short_description": "Displays this help text. Use --help=(parameter name) to see more details.",
-      "long_description": "nothing to see here, move along."
+      "long_description": ""
     },
     {
       "name": "all",
