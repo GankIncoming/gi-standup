@@ -23,10 +23,10 @@ param_collection = parameters.ParameterCollection()
 
 log = logging.getLogger(__name__)
 app = create_addon_app(__name__,
-                       plugin_key = "gi-standup-dev",
-                       addon_name = "GI Standup Dev",
+                       plugin_key = "gi-standup",
+                       addon_name = "GI Standup",
                        from_name = "GI Standup",
-                       base_url = "https://gi-standup-dev.herokuapp.com")
+                       base_url = "https://gi-standup.herokuapp.com")
 
 app.config['MONGO_URL'] = os.environ.get("MONGO_URL", None)
 app.config['REDIS_URL'] = os.environ.get("REDISTOGO_URL", None)
