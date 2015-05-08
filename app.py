@@ -392,6 +392,10 @@ def string_to_timedelta(s):
     except:
         return None
 
+    if num <= 0:
+        print("Error: Time interval less or equal to zero!")
+        return None
+
     s = s.lower()
 
     if s.endswith('s'):
