@@ -120,7 +120,7 @@ def handle_standalone_parameters(addon, client, status_params):
             continue
 
         if hasattr(param, "handler"):
-            param.handler(addon, client, status_params[param_alias])
+            yield from param.handler(addon, client, status_params[param_alias])
 
         return param.show_statuses
 
@@ -128,6 +128,8 @@ def handle_standalone_parameters(addon, client, status_params):
     yield from client.send_notification(addon, text = "Error: the parameters present require a status.")
     return False
 
+
+@asyncio.coroutine
 def handle_show_expired(addon, client, argument):
     try:
         value = string_to_bool(argument)
@@ -147,12 +149,13 @@ def handle_show_expired(addon, client, argument):
     except:
         yield from client.send_notification(addon, text = "Error: invalid argument for --expiry.")
 
+@asyncio.coroutine
 def handle_help_parameter(addon, client, argument):
     if len(argument) > 0:
         if argument not in param_collection:
             yield from client.send_notification(addon, text = "Error: invalid argument for --help.")
         else:
-            yield from client.send_notification(addon, text = param_collection.get(argument).long_help_str.replace("\n", "<br>"))
+            yield from client.send_notification(addon, text = param_collection[argument].long_help_str.replace("\n", "<br>"))
         return
 
     param_name_list = sorted([k for k, _ in param_collection.parameters])
