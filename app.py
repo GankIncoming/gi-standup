@@ -156,16 +156,21 @@ def handle_help_parameter(addon, client, argument):
         if argument not in param_collection:
             yield from client.send_notification(addon, text = "Error: invalid argument for --help.")
         else:
-            yield from client.send_notification(addon, text = param_collection[argument].long_help_str.replace("\n", "<br>"))
+            param = param_collection[argument]
+            txt = "<b>{name}</b>: {desc}<br>" \
+                  "{long_desc}<br>" \
+                  "<b>Aliases</b>: {aliases}".format(name = param.name, desc = param.short_desc, long_desc = param.long_desc, aliases = param.aliases)
+            yield from client.send_notification(addon, html = txt)
         return
 
     param_name_list = sorted([k for k in param_collection.parameters])
     txt = ""
 
     for name in param_name_list:
-        txt += param_collection.get(name).short_help_str + "<br>"
+        param = param_collection[name]
+        txt += "<b>{name}</b>: {desc}<br>".format(name = param.name, desc = param.short_desc)
 
-    yield from client.send_notification(addon, text = txt)
+    yield from client.send_notification(addon, html = txt)
 
 @app.route('/standup', method='POST')
 @asyncio.coroutine

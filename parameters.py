@@ -22,8 +22,6 @@ class Parameter(object):
         self.show_statuses = show_statuses
         self.short_desc = short_desc
         self.long_desc = long_desc
-        self.short_help_str = self.name + ": " + self.short_desc
-        self.long_help_str = self.short_help_str + "\n" + self.long_desc + "\nAliases: " + ", ".join(self.aliases)
 
         default_alias = prefix + self.name
         if default_alias not in self.aliases:
@@ -59,7 +57,7 @@ class ParameterCollection(object):
         self.parameters[parameter.name] = parameter
 
     def has(self, alias):
-        return alias in self.alias_to_name
+        return alias in self.parameters or alias in self.alias_to_name
 
     def __getitem__(self, item):
         return self.get(item)
