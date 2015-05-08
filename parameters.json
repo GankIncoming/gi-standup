@@ -1,0 +1,57 @@
+{
+  "parameters": [
+    {
+      "name": "expiry",
+      "aliases": [
+        "-e"
+      ],
+      "usable_with_status": true,
+      "usable_without_status": false,
+      "show_statuses": false,
+      "short_description": "Sets an expiry date for the status.",
+      "long_description": "--expiry=#(d|h|m|s), where # is the number of days, hours, minutes or seconds during which the status is valid, or --expiry=DD.MM for day and month."
+    },
+    {
+      "name": "help",
+      "aliases": [
+        "-h"
+      ],
+      "usable_with_status": false,
+      "usable_without_status": true,
+      "show_statuses": false,
+      "short_description": "Displays this help text. Use --help=(parameter name) to see more details.",
+      "long_description": ""
+    },
+    {
+      "name": "all",
+      "aliases": [
+        "-a"
+      ],
+      "usable_with_status": false,
+      "usable_without_status": true,
+      "show_statuses": true,
+      "short_description": "Shows all statuses regardless of settings.",
+      "long_description": ""
+    },
+    {
+      "name": "no-expired",
+      "aliases": [
+        "-ne"
+      ],
+      "usable_with_status": false,
+      "usable_without_status": true,
+      "show_statuses": true,
+      "short_description": "Filters out expired statuses regardless of settings.",
+      "long_description": ""
+    },
+    {
+      "name": "show-expired",
+      "aliases": [],
+      "usable_with_status": false,
+      "usable_without_status": true,
+      "show_statuses": false,
+      "short_description": "Persistent option to determine whether expired statuses are shown in the usual '/standup' usage.",
+      "long_description": "--show-expired=true|false"
+    }
+  ]
+}

@@ -5,21 +5,21 @@ import asyncio
 import arrow
 import markdown
 from bottle_ac import create_addon_app
-
-
-options_show_expired_key = "show expired"
-
-parameter_prefix = "--"
-parameter_argument_separator = "="
-parameter_expiry_date = [parameter_prefix + "expiry", parameter_prefix + "expiration"]
-parameter_show_expired_persistent = parameter_prefix + "show-expired"
-parameter_show_all_once = parameter_prefix + "all"
-parameter_no_show_expired_once = parameter_prefix + "no-expired"
+import parameters
 
 db_user_key = "user"
 db_status_key = "message"
 db_date_key = "date"
 db_expiry_key = "expiry"
+
+param_expiry_name = "expiry"
+param_help_name = "help"
+param_all_name = "all"
+param_no_expired_name = "no-expired"
+param_show_expired_name = "show-expired"
+
+param_filename = "parameters.json"
+param_collection = parameters.ParameterCollection()
 
 log = logging.getLogger(__name__)
 app = create_addon_app(__name__,
@@ -32,6 +32,8 @@ app.config['MONGO_URL'] = os.environ.get("MONGO_URL", None)
 app.config['REDIS_URL'] = os.environ.get("REDISTOGO_URL", None)
 
 def init():
+    global param_collection
+
     @asyncio.coroutine
     def _send_welcome(event):
         client = event['client']
@@ -40,6 +42,8 @@ def init():
                  "you can use Markdown).")
 
     app.addon.register_event('install', _send_welcome)
+    param_collection = parameters.parse_json(param_filename)
+    assign_parameter_handlers()
 
 app.add_hook('before_first_request', init)
 
@@ -82,49 +86,93 @@ def capabilities(request, response):
         }
     }
 
-def extract_status_parameters(status):
-    parameters = {}
+def assign_parameter_handlers():
+    global param_collection
 
-    while len(status) > 0:
-        if status.startswith(parameter_prefix):
-            parameter, _, status = status.partition(' ')
-            parameter, _, argument = parameter.partition(parameter_argument_separator)
-            parameters[parameter.lower()] = argument.lower()
-            status = status.strip()
-        else:
+    param_collection[param_show_expired_name].handler = handle_show_expired
+    param_collection[param_help_name].handler = handle_help_parameter
+
+def extract_status_parameters(status):
+    status_params = {}
+
+    while status.startswith(parameters.prefix_short):
+        parameter, _, temp = status.partition(' ')
+        parameter, _, argument = parameter.partition(parameters.argument_separator)
+
+        if parameter not in param_collection:
+            print("%s not in parameter collection." % parameter)
             break
 
-    return status, parameters
+        status_params[parameter] = argument
+        status = temp.strip()
+
+    return status, status_params
+
+@asyncio.coroutine
+def handle_standalone_parameters(addon, client, status_params):
+    if len(status_params) <= 0:
+        return True
+
+    # Use the 1st valid parameter
+    for param_alias in status_params:
+        param = param_collection[param_alias]
+
+        if not param.without_status:
+            continue
+
+        if hasattr(param, "handler"):
+            yield from param.handler(addon, client, status_params[param_alias])
+
+        return param.show_statuses
+
+    # Don't proceed if there were parameters but not usable without a status.
+    yield from client.send_notification(addon, text = "Error: the parameters present require a status.")
+    return False
 
 
 @asyncio.coroutine
-def handle_standalone_parameters(addon, client, parameters):
-    if len(parameters) <= 0:
-        return True
+def handle_show_expired(addon, client, argument):
+    try:
+        value = string_to_bool(argument)
+        options = yield from options_db(addon, client)
 
-    if parameter_show_expired_persistent in parameters:
-        try:
-            value = string_to_bool(parameters[parameter_show_expired_persistent])
-            options = yield from options_db(addon, client)
+        if not options:
+            options = {}
 
-            if not options:
-                options = {}
+        options[param_show_expired_name] = value
 
-            options[options_show_expired_key] = value
+        yield from save_to_db(addon, client, statuses = None, options = options)
 
-            yield from save_to_db(addon, client, statuses = None, options = options)
+        if value:
+            yield from client.send_notification(addon, text = "Expired statuses WILL be shown from now on.")
+        else:
+            yield from client.send_notification(addon, text = "Expired statuses will NOT be shown from now on.")
+    except:
+        yield from client.send_notification(addon, text = "Error: invalid argument for --expiry.")
 
-            if value:
-                yield from client.send_notification(addon, text = "Expired statuses WILL be shown from now on.")
-            else:
-                yield from client.send_notification(addon, text = "Expired statuses will NOT be shown from now on.")
-        except:
-            yield from client.send_notification(addon, text = "Error: invalid argument for %s." % parameter_show_expired_persistent)
+@asyncio.coroutine
+def handle_help_parameter(addon, client, argument):
+    if len(argument) > 0:
+        if argument not in param_collection:
+            yield from client.send_notification(addon, text = "Error: invalid argument for --help.")
+        else:
+            param = param_collection[argument]
+            long_desc = ("<b>Usage</b>: %s<br>" % param.long_desc) if len(param.long_desc) > 0 else ""
+            txt = "<b>{name}</b>: {desc}<br>" \
+                  "{long_desc}" \
+                  "<b>Aliases</b>: {aliases}".format(name = param.name, desc = param.short_desc, long_desc = long_desc,
+                                                     aliases = ", ".join(param.aliases))
+            yield from client.send_notification(addon, html = txt)
+        return
 
-        return False
+    param_name_list = sorted([k for k in param_collection.parameters])
+    txt = ""
 
-    return True
+    for name in param_name_list:
+        param = param_collection[name]
+        txt += "<b>{name}</b>: {desc}<br>".format(name = param.name, desc = param.short_desc)
 
+    yield from client.send_notification(addon, html = txt)
 
 @app.route('/standup', method='POST')
 @asyncio.coroutine
@@ -150,20 +198,19 @@ def standup(request, response):
 
     response.status = 204
 
-
-def handle_expiry_date_parameter(parameters):
+def handle_expiry_parameter(status_params):
     parameter_present = False
     argument = ""
 
-    if len(parameters) > 0:
-        for alias in parameter_expiry_date:
-            if alias in parameters:
+    if len(status_params) > 0:
+        for alias in param_collection.get(param_expiry_name).aliases:
+            if alias in status_params:
                 parameter_present = True
-                argument = parameters[alias]
+                argument = status_params[alias]
                 break
 
     if not parameter_present:
-        return True, datetime.utcnow() + timedelta(days = 1)
+        return True, datetime.utcnow() + timedelta(days = 1) # TODO make it configurable
 
     if len(argument) <= 0:
         print("Error: no argument for expiry parameter")
@@ -188,10 +235,10 @@ def handle_expiry_date_parameter(parameters):
     return False, None
 
 @asyncio.coroutine
-def record_status(addon, client, from_user, status, parameters):
+def record_status(addon, client, from_user, status, status_params):
     spec, statuses = yield from find_statuses(addon, client, show_expired = True)
     user_mention = from_user['mention_name']
-    success, expiry_date = handle_expiry_date_parameter(parameters)
+    success, expiry_date = handle_expiry_parameter(status_params)
 
     if not success:
         yield from client.send_notification(addon, text = "Error: invalid expiry argument. Status NOT recorded.")
@@ -240,17 +287,26 @@ def display_one_status(addon, client, mention_name):
 
 
 @asyncio.coroutine
-def display_all_statuses(addon, client, parameters):
+def display_all_statuses(addon, client, status_params):
     options = yield from options_db(addon, client)
     show_expired = True
 
-    if options is not None and options_show_expired_key in options:
-        show_expired = options[options_show_expired_key]
+    if options is not None and param_show_expired_name in options:
+        show_expired = options[param_show_expired_name]
 
-    if parameter_show_all_once in parameters:
-        show_expired = True
-    elif parameter_no_show_expired_once in parameters:
-        show_expired = False
+    # TODO figure out something better because this looks like shit
+    found = False
+    for alias in param_collection[param_all_name].aliases:
+        if alias in status_params:
+            show_expired = True
+            found = True
+            break
+
+    if not found:
+        for alias in param_collection[param_no_expired_name].aliases:
+            if alias in status_params:
+                show_expired = False
+                break
 
     spec, statuses = yield from find_statuses(addon, client, show_expired = show_expired)
 
@@ -352,14 +408,13 @@ def string_to_timedelta(s):
 def string_to_bool(s):
     s = s.lower()
 
-    if s in ["true", "t", "1"]:
+    if s in ["true", "t", "1", "yes"]:
         return True
 
-    if s in ["false", "f", "0"]:
+    if s in ["false", "f", "0", "no"]:
         return False
 
     raise ValueError("Could not convert string to bool!")
-
 
 if __name__ == "__main__":
     app.run(host="", reloader=True, debug=True)
