@@ -159,7 +159,7 @@ def handle_help_parameter(addon, client, argument):
             yield from client.send_notification(addon, text = param_collection[argument].long_help_str.replace("\n", "<br>"))
         return
 
-    param_name_list = sorted([k for k, _ in param_collection.parameters])
+    param_name_list = sorted([k for k in param_collection.parameters])
     txt = ""
 
     for name in param_name_list:
