@@ -12,6 +12,7 @@ argument_separator = "="
 prefix = "--"
 prefix_short = "-"
 
+
 class Parameter(object):
     def __init__(self, name, aliases, with_status, without_status, show_statuses, short_desc, long_desc):
         self.name = name
@@ -28,8 +29,10 @@ class Parameter(object):
         if default_alias not in self.aliases:
             self.aliases.insert(0, default_alias)
 
+
     def has_alias(self, alias):
         return alias in self.aliases
+
 
 class ParameterCollection(object):
     def __init__(self):
@@ -58,6 +61,12 @@ class ParameterCollection(object):
     def has(self, alias):
         return alias in self.alias_to_name
 
+    def __getitem__(self, item):
+        return self.get(item)
+
+    def __contains__(self, item):
+        return self.has(item)
+
 def parse_json(filename):
     parameters = ParameterCollection()
     file = open(filename, 'r')
@@ -69,5 +78,7 @@ def parse_json(filename):
 
     return parameters
 
+
 def dict_to_parameter(d):
-    return Parameter(d[name_key], d[aliases_key], d[with_status_key], d[without_status_key], d[show_statuses_key], d[short_desc_key], d[long_desc_key])
+    return Parameter(d[name_key], d[aliases_key], d[with_status_key], d[without_status_key], d[show_statuses_key], d[short_desc_key],
+                     d[long_desc_key])

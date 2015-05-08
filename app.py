@@ -89,8 +89,8 @@ def capabilities(request, response):
 def assign_parameter_handlers():
     global param_collection
 
-    param_collection[param_expiry_name].handler = handle_expiry_date_parameter
-    param_collection[param_help_name].handler = handle_help
+    param_collection[param_show_expired_name].handler = handle_show_expired
+    param_collection[param_help_name].handler = handle_help_parameter
 
 def extract_status_parameters(status):
     status_params = {}
@@ -99,7 +99,7 @@ def extract_status_parameters(status):
         parameter, _, temp = status.partition(' ')
         parameter, _, argument = parameter.partition(parameters.argument_separator)
 
-        if not param_collection.has(parameter):
+        if parameter not in param_collection:
             break
 
         status_params[parameter] = argument
@@ -147,9 +147,9 @@ def handle_show_expired(addon, client, argument):
     except:
         yield from client.send_notification(addon, text = "Error: invalid argument for --expiry.")
 
-def handle_help(addon, client, argument):
+def handle_help_parameter(addon, client, argument):
     if len(argument) > 0:
-        if not param_collection.has(argument):
+        if argument not in param_collection:
             yield from client.send_notification(addon, text = "Error: invalid argument for --help.")
         else:
             yield from client.send_notification(addon, text = param_collection.get(argument).long_help_str.replace("\n", "<br>"))
@@ -187,7 +187,7 @@ def standup(request, response):
 
     response.status = 204
 
-def handle_expiry_date_parameter(status_params):
+def handle_expiry_parameter(status_params):
     parameter_present = False
     argument = ""
 
@@ -227,7 +227,7 @@ def handle_expiry_date_parameter(status_params):
 def record_status(addon, client, from_user, status, status_params):
     spec, statuses = yield from find_statuses(addon, client, show_expired = True)
     user_mention = from_user['mention_name']
-    success, expiry_date = handle_expiry_date_parameter(status_params)
+    success, expiry_date = handle_expiry_parameter(status_params)
 
     if not success:
         yield from client.send_notification(addon, text = "Error: invalid expiry argument. Status NOT recorded.")
