@@ -157,9 +157,11 @@ def handle_help_parameter(addon, client, argument):
             yield from client.send_notification(addon, text = "Error: invalid argument for --help.")
         else:
             param = param_collection[argument]
+            long_desc = ("<b>Usage</b>: %s" % param.long_desc) if len(param.long_desc) > 0 else ""
             txt = "<b>{name}</b>: {desc}<br>" \
-                  "{long_desc}<br>" \
-                  "<b>Aliases</b>: {aliases}".format(name = param.name, desc = param.short_desc, long_desc = param.long_desc, aliases = param.aliases)
+                  "{long_desc}" \
+                  "<b>Aliases</b>: {aliases}".format(name = param.name, desc = param.short_desc, long_desc = long_desc,
+                                                     aliases = ", ".join(param.aliases))
             yield from client.send_notification(addon, html = txt)
         return
 

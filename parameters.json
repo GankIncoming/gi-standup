@@ -9,7 +9,7 @@
       "usable_without_status": false,
       "show_statuses": false,
       "short_description": "Sets an expiry date for the status.",
-      "long_description": "Usage: --expiry=#(d|h|m|s), where # is the number of days, hours, minutes or seconds during which the status is valid, or --expiry=DD.MM for day and month."
+      "long_description": "--expiry=#(d|h|m|s), where # is the number of days, hours, minutes or seconds during which the status is valid, or --expiry=DD.MM for day and month."
     },
     {
       "name": "help",
@@ -19,8 +19,8 @@
       "usable_with_status": false,
       "usable_without_status": true,
       "show_statuses": false,
-      "short_description": "Displays this help text. Use --help=(parameter name) to see a more detailed help about the parameter.",
-      "long_description": "Nothing to see here, move along."
+      "short_description": "Displays this help text. Use --help=(parameter name) to see more details.",
+      "long_description": "nothing to see here, move along."
     },
     {
       "name": "all",
@@ -51,7 +51,7 @@
       "usable_without_status": true,
       "show_statuses": false,
       "short_description": "Persistent option to determine whether expired statuses are shown in the usual '/standup' usage.",
-      "long_description": "Usage: --show-expired=true|false"
+      "long_description": "--show-expired=true|false"
     }
   ]
 }
