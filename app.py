@@ -100,6 +100,7 @@ def extract_status_parameters(status):
         parameter, _, argument = parameter.partition(parameters.argument_separator)
 
         if parameter not in param_collection:
+            print("%s not in parameter collection." % parameter)
             break
 
         status_params[parameter] = argument
@@ -114,7 +115,7 @@ def handle_standalone_parameters(addon, client, status_params):
 
     # Use the 1st valid parameter
     for param_alias in status_params:
-        param = param_collection.get(param_alias)
+        param = param_collection[param_alias]
 
         if not param.without_status:
             continue
@@ -286,10 +287,19 @@ def display_all_statuses(addon, client, status_params):
     if options is not None and param_show_expired_name in options:
         show_expired = options[param_show_expired_name]
 
-    if param_all_name in status_params:
-        show_expired = True
-    elif param_no_expired_name in status_params:
-        show_expired = False
+    # TODO figure out something better because this looks like shit
+    found = False
+    for alias in param_collection[param_all_name].aliases:
+        if alias in status_params:
+            show_expired = True
+            found = True
+            break
+
+    if not found:
+        for alias in param_collection[param_no_expired_name].aliases:
+            if alias in status_params:
+                show_expired = False
+                break
 
     spec, statuses = yield from find_statuses(addon, client, show_expired = show_expired)
 
