@@ -3,7 +3,6 @@
     {
       "name": "expiry",
       "aliases": [
-        "--expiry",
         "-e"
       ],
       "usable_with_status": true,
@@ -15,7 +14,6 @@
     {
       "name": "help",
       "aliases": [
-        "--help",
         "-h"
       ],
       "usable_with_status": false,
@@ -27,7 +25,6 @@
     {
       "name": "all",
       "aliases": [
-        "--all",
         "-a"
       ],
       "usable_with_status": false,
@@ -39,7 +36,6 @@
     {
       "name": "no-expired",
       "aliases": [
-        "--no-expired",
         "-ne"
       ],
       "usable_with_status": false,
@@ -50,9 +46,7 @@
     },
     {
       "name": "show-expired",
-      "aliases": [
-        "--show-expired"
-      ],
+      "aliases": [],
       "usable_with_status": false,
       "usable_without_status": true,
       "show_statuses": false,

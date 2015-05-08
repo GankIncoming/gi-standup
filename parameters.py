@@ -24,6 +24,10 @@ class Parameter(object):
         self.short_help_str = self.name + ": " + self.short_desc
         self.long_help_str = self.short_help_str + "\n" + self.long_desc + "\nAliases: " + ", ".join(self.aliases)
 
+        default_alias = prefix + self.name
+        if default_alias not in self.aliases:
+            self.aliases.insert(0, default_alias)
+
     def has_alias(self, alias):
         return alias in self.aliases
 
@@ -32,10 +36,13 @@ class ParameterCollection(object):
         self.alias_to_name = {}
         self.parameters = {}
 
-    def Get(self, alias):
+    def get(self, alias):
+        if alias in self.parameters:
+            return self.parameters[alias]
+
         return self.parameters[self.alias_to_name[alias]]
 
-    def Add(self, parameter):
+    def add(self, parameter):
         for alias in parameter.aliases:
             if alias in self.alias_to_name:
                 raise ValueError("Alias %s already exists in the dictionary!" % alias)
@@ -48,7 +55,7 @@ class ParameterCollection(object):
 
         self.parameters[parameter.name] = parameter
 
-    def Has(self, alias):
+    def has(self, alias):
         return alias in self.alias_to_name
 
 def parse_json(filename):
@@ -58,7 +65,7 @@ def parse_json(filename):
     file.close()
 
     for p_dict in json_dict["parameters"]:
-        parameters.Add(dict_to_parameter(p_dict))
+        parameters.add(dict_to_parameter(p_dict))
 
     return parameters
 
