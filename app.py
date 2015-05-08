@@ -23,13 +23,14 @@ param_collection = parameters.ParameterCollection()
 
 log = logging.getLogger(__name__)
 app = create_addon_app(__name__,
-                       plugin_key="gi-standup-dev",
-                       addon_name="GI Standup Dev",
-                       from_name="GI Standup",
-                       base_url="https://gi-standup-dev.herokuapp.com")
+                       plugin_key = "gi-standup-dev",
+                       addon_name = "GI Standup Dev",
+                       from_name = "GI Standup",
+                       base_url = "https://gi-standup-dev.herokuapp.com")
 
 app.config['MONGO_URL'] = os.environ.get("MONGO_URL", None)
 app.config['REDIS_URL'] = os.environ.get("REDISTOGO_URL", None)
+
 
 def init():
     global param_collection
@@ -38,12 +39,12 @@ def init():
     def _send_welcome(event):
         client = event['client']
         yield from client.send_notification(app.addon,
-            text="GI Standup was added to this room. Type '/standup I did *this*' to get started (yes, "
-                 "you can use Markdown).")
+                                            text = "GI Standup was added to this room. Type '/standup I did *this*' to get started (yes, you can use Markdown).")
 
     app.addon.register_event('install', _send_welcome)
     param_collection = parameters.parse_json(param_filename)
     assign_parameter_handlers()
+
 
 app.add_hook('before_first_request', init)
 
@@ -86,11 +87,13 @@ def capabilities(request, response):
         }
     }
 
+
 def assign_parameter_handlers():
     global param_collection
 
     param_collection[param_show_expired_name].handler = handle_show_expired
     param_collection[param_help_name].handler = handle_help_parameter
+
 
 def extract_status_parameters(status):
     status_params = {}
@@ -107,6 +110,7 @@ def extract_status_parameters(status):
         status = temp.strip()
 
     return status, status_params
+
 
 @asyncio.coroutine
 def handle_standalone_parameters(addon, client, status_params):
@@ -150,6 +154,7 @@ def handle_show_expired(addon, client, argument):
     except:
         yield from client.send_notification(addon, text = "Error: invalid argument for --expiry.")
 
+
 @asyncio.coroutine
 def handle_help_parameter(addon, client, argument):
     if len(argument) > 0:
@@ -174,7 +179,8 @@ def handle_help_parameter(addon, client, argument):
 
     yield from client.send_notification(addon, html = txt)
 
-@app.route('/standup', method='POST')
+
+@app.route('/standup', method = 'POST')
 @asyncio.coroutine
 def standup(request, response):
     body = request.json
@@ -192,11 +198,12 @@ def standup(request, response):
         if proceed:
             yield from display_all_statuses(app.addon, client, parameters)
     elif status.startswith("@") and ' ' not in status:
-        yield from display_one_status(app.addon, client, mention_name=status.strip("@"))
+        yield from display_one_status(app.addon, client, mention_name = status.strip("@"))
     else:
         yield from record_status(app.addon, client, from_user, status, parameters)
 
     response.status = 204
+
 
 def handle_expiry_parameter(status_params):
     parameter_present = False
@@ -210,7 +217,7 @@ def handle_expiry_parameter(status_params):
                 break
 
     if not parameter_present:
-        return True, datetime.utcnow() + timedelta(days = 1) # TODO make it configurable
+        return True, datetime.utcnow() + timedelta(days = 1)  # TODO make it configurable
 
     if len(argument) <= 0:
         print("Error: no argument for expiry parameter")
@@ -234,6 +241,7 @@ def handle_expiry_parameter(status_params):
     print("Error: invalid expiry argument")
     return False, None
 
+
 @asyncio.coroutine
 def record_status(addon, client, from_user, status, status_params):
     spec, statuses = yield from find_statuses(addon, client, show_expired = True)
@@ -253,7 +261,7 @@ def record_status(addon, client, from_user, status, status_params):
 
     yield from save_to_db(addon, client, statuses = statuses, options = None)
 
-    yield from client.send_notification(addon, text="Status recorded.  Type '/standup' to see the full report.")
+    yield from client.send_notification(addon, text = "Status recorded.  Type '/standup' to see the full report.")
 
 
 @asyncio.coroutine
@@ -274,16 +282,17 @@ def save_to_db(addon, client, statuses, options, delete = False):
 
     yield from standup_db(addon).update(spec, data, upsert = True)
 
+
 @asyncio.coroutine
 def display_one_status(addon, client, mention_name):
     spec, statuses = yield from find_statuses(addon, client, show_expired = True)
 
     status = statuses.get(mention_name)
     if status:
-        yield from client.send_notification(addon, html=render_status(status))
+        yield from client.send_notification(addon, html = render_status(status))
     else:
-        yield from client.send_notification(addon, text="No status found. "
-                                                        "Type '/standup I did this' to add your own status.")
+        yield from client.send_notification(addon, text = "No status found. "
+                                                          "Type '/standup I did this' to add your own status.")
 
 
 @asyncio.coroutine
@@ -311,10 +320,10 @@ def display_all_statuses(addon, client, status_params):
     spec, statuses = yield from find_statuses(addon, client, show_expired = show_expired)
 
     if statuses:
-        yield from client.send_notification(addon, html=render_all_statuses(statuses))
+        yield from client.send_notification(addon, html = render_all_statuses(statuses))
     else:
-        yield from client.send_notification(addon, text="No status found. "
-                                                        "Type '/standup I did this' to add your own status.")
+        yield from client.send_notification(addon, text = "No status found. "
+                                                          "Type '/standup I did this' to add your own status.")
 
 
 def render_all_statuses(statuses):
@@ -339,7 +348,7 @@ def render_status(status):
             name = name, message = html, ago = msg_date.humanize(), expiry = expiry_date.humanize())
 
     return "<b>{name}</b>: {message} -- <i>{ago} (expiry: {expiry})</i>".format(name = name, message = html, ago = msg_date.humanize(),
-                                                                               expiry = expiry_date.humanize())
+                                                                                expiry = expiry_date.humanize())
 
 
 @asyncio.coroutine
@@ -364,8 +373,10 @@ def find_statuses(addon, client, show_expired):
 
     return spec, statuses
 
+
 def is_status_expired(status):
     return status[db_expiry_key] is not None and status[db_expiry_key].replace(tzinfo = None) < datetime.utcnow()
+
 
 def status_spec(client):
     return {
@@ -374,9 +385,10 @@ def status_spec(client):
         "capabilities_url": client.capabilities_url
     }
 
-    
+
 def standup_db(addon):
     return addon.mongo_db.default_database['standup']
+
 
 @asyncio.coroutine
 def options_db(addon, client):
@@ -385,6 +397,7 @@ def options_db(addon, client):
     if data:
         return data.get("options", {})
     return None
+
 
 def string_to_timedelta(s):
     try:
@@ -409,6 +422,7 @@ def string_to_timedelta(s):
 
     return None
 
+
 def string_to_bool(s):
     s = s.lower()
 
@@ -420,5 +434,6 @@ def string_to_bool(s):
 
     raise ValueError("Could not convert string to bool!")
 
+
 if __name__ == "__main__":
-    app.run(host="", reloader=True, debug=True)
+    app.run(host = "", reloader = True, debug = True)
