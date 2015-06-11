@@ -270,12 +270,13 @@ def save_to_db(addon, client, statuses, options, delete = False):
         return
 
     if statuses is None and not delete:
-        statuses = yield from find_statuses(addon, client, show_expired = True)
+        spec, statuses = yield from find_statuses(addon, client, show_expired = True)
+    else:
+        spec = status_spec(client)
 
     if options is None and not delete:
         options = yield from options_db(addon, client)
 
-    spec = status_spec(client)
     data = dict(spec)
     data["users"] = statuses
     data["options"] = options
